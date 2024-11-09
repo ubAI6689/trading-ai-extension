@@ -9,6 +9,8 @@ import {
   Activity
 } from 'lucide-react';
 import config from '../config';
+import PatternDisplay from './PatternDisplay';
+import { usePatternRecognition } from '../hooks/usePatternRecognition';
 
 // Types for our price data
 interface PriceData {
@@ -26,6 +28,13 @@ interface PriceData {
       momentum: number;
     };
   };
+}
+
+// Add after PriceData interface
+interface PatternData {
+  timestamp: number;
+  price: number;
+  volume: number;
 }
 
 interface Alert {
@@ -115,6 +124,16 @@ const TradingPanel: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [prevData, setPrevData] = useState<PriceData | null>(null);
 
+  // Add after your existing state declarations, before fetchPriceData
+  const [priceHistory, setPriceHistory] = useState<PatternData[]>([]);
+
+  // Add the pattern recognition hook here
+  const { analysis, isLoading: isAnalyzing } = usePatternRecognition({
+    data: priceHistory,
+    enabled: !isCollapsed,
+    interval: 30000
+  });
+
   const fetchPriceData = async () => {
     try {
       setIsLoading(true);
@@ -161,6 +180,20 @@ const TradingPanel: React.FC = () => {
 
       setPrevData(priceData);
       setPriceData(newPriceData);
+
+      // Add after setPriceData(newPriceData);
+      // Add to price history for pattern recognition
+      const newPatternData: PatternData = {
+        timestamp: newPriceData.timestamp,
+        price: newPriceData.price,
+        volume: newPriceData.volume24h
+      };
+
+      setPriceHistory(prev => {
+        const history = [...prev, newPatternData];
+        // Keep last 100 data points
+        return history.slice(-100);
+      });
       setError(null);
 
       // Check for significant price movements
@@ -297,6 +330,29 @@ const TradingPanel: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* Add after Sentiment Section and before Alerts */}
+            {/* Pattern Recognition */}
+            {isAnalyzing ? (
+              <div className="text-center py-2 text-gray-500 text-sm">
+                Analyzing patterns...
+              </div>
+            ) : analysis && (
+              <div className="mb-4 border-t border-gray-100 pt-4">
+                <PatternDisplay 
+                  patterns={analysis.patterns}
+                  onPatternClick={(pattern) => {
+                    // Add an alert when pattern is clicked
+                    setAlerts(prev => [{
+                      id: Date.now(),
+                      message: `Selected ${pattern.type.replace('_', ' ')} pattern with ${pattern.predictedDirection} trend`,
+                      type: 'technical',
+                      timestamp: Date.now()
+                    }, ...prev.slice(0, 4)]);
+                  }}
+                />
+              </div>
+            )}
 
             {/* Alerts */}
             {alerts.length > 0 && (
