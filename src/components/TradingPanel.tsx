@@ -4,7 +4,9 @@ import {
   TrendingUp, 
   TrendingDown, 
   DollarSign,
-  X
+  X,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 import config from '../config';
 
@@ -16,6 +18,14 @@ interface PriceData {
   volume24h: number;
   symbol: string;
   name: string;
+  sentiment: {
+    value: number;  // -100 to 100
+    indicators: {
+      price: number;
+      volume: number;
+      momentum: number;
+    };
+  };
 }
 
 interface Alert {
@@ -25,6 +35,76 @@ interface Alert {
   timestamp: number;
 }
 
+const calculateSentiment = (
+  currentPrice: number, 
+  change24h: number, 
+  volume24h: number,
+  prevData: PriceData | null
+): PriceData['sentiment'] => {
+  // Price sentiment (-100 to 100)
+  const priceSentiment = Math.min(Math.max(change24h * 10, -100), 100);
+  
+  // Volume sentiment (-100 to 100)
+  let volumeSentiment = 0;
+  if (prevData && prevData.volume24h) {
+    const volumeChange = ((volume24h - prevData.volume24h) / prevData.volume24h) * 100;
+    volumeSentiment = Math.min(Math.max(volumeChange * 5, -100), 100);
+  }
+
+  // Momentum (based on price acceleration)
+  let momentumSentiment = 0;
+  if (prevData && prevData.change24h) {
+    const acceleration = change24h - prevData.change24h;
+    momentumSentiment = Math.min(Math.max(acceleration * 20, -100), 100);
+  }
+
+  // Overall sentiment (weighted average)
+  const value = (
+    (priceSentiment * 0.5) + 
+    (volumeSentiment * 0.3) + 
+    (momentumSentiment * 0.2)
+  );
+
+  return {
+    value,
+    indicators: {
+      price: priceSentiment,
+      volume: volumeSentiment,
+      momentum: momentumSentiment
+    }
+  };
+};
+
+const SentimentIndicator: React.FC<{ sentiment: number, label: string }> = ({ sentiment, label }) => {
+  const getColor = (value: number) => {
+    if (value > 30) return 'bg-green-500';
+    if (value > 0) return 'bg-green-300';
+    if (value > -30) return 'bg-red-300';
+    return 'bg-red-500';
+  };
+
+  const width = Math.abs(sentiment);
+  const direction = sentiment >= 0 ? 'left' : 'right';
+
+  return (
+    <div className="my-1">
+      <div className="flex justify-between text-xs text-gray-500 mb-1">
+        <span>{label}</span>
+        <span>{sentiment.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${getColor(sentiment)} transition-all duration-500`}
+          style={{ 
+            width: `${width}%`,
+            marginLeft: direction === 'left' ? 0 : `${100 - width}%`
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 const COIN_ID = 'bitcoin';
 
 const TradingPanel: React.FC = () => {
@@ -33,6 +113,7 @@ const TradingPanel: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [prevData, setPrevData] = useState<PriceData | null>(null);
 
   const fetchPriceData = async () => {
     try {
@@ -60,6 +141,13 @@ const TradingPanel: React.FC = () => {
       }
 
       const coinData = data[COIN_ID];
+
+      const sentiment = calculateSentiment(
+        coinData.usd,
+        coinData.usd_24h_change || 0,
+        coinData.usd_24h_vol || 0,
+        prevData
+      );
       
       const newPriceData: PriceData = {
         price: coinData.usd,
@@ -67,8 +155,13 @@ const TradingPanel: React.FC = () => {
         change24h: coinData.usd_24h_change || 0,
         volume24h: coinData.usd_24h_vol || 0,
         symbol: COIN_ID.toUpperCase(),
-        name: COIN_ID.charAt(0).toUpperCase() + COIN_ID.slice(1)
+        name: COIN_ID.charAt(0).toUpperCase() + COIN_ID.slice(1),
+        sentiment
       };
+
+      setPrevData(priceData);
+      setPriceData(newPriceData);
+      setError(null);
 
       // Check for significant price movements
       if (priceData && Math.abs(newPriceData.change24h) > 5) {
@@ -81,8 +174,17 @@ const TradingPanel: React.FC = () => {
         setAlerts(prev => [newAlert, ...prev.slice(0, 4)]);
       }
 
-      setPriceData(newPriceData);
-      setError(null);
+      // Check for sentiment shifts
+      if (prevData && Math.abs(sentiment.value - prevData.sentiment.value) > 30) {
+        const newAlert: Alert = {
+          id: Date.now(),
+          message: `Strong ${sentiment.value > prevData.sentiment.value ? 'positive' : 'negative'} sentiment shift detected`,
+          type: 'technical',
+          timestamp: Date.now()
+        };
+        setAlerts(prev => [newAlert, ...prev.slice(0, 4)]);
+      }
+
     } catch (err) {
       console.error('Error fetching price data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch price data');
@@ -166,6 +268,33 @@ const TradingPanel: React.FC = () => {
               )}
               <div className="text-xs text-gray-400 mt-1">
                 Last updated: {new Date(priceData.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+
+            {/* Sentiment Section */}
+            <div className="mb-4 border-t border-gray-100 pt-4">
+              <div className="flex items-center mb-2">
+                <Activity className="h-4 w-4 text-gray-500 mr-2" />
+                <h3 className="text-sm font-medium text-gray-700">Market Sentiment</h3>
+              </div>
+              
+              <div className="space-y-3">
+                <SentimentIndicator 
+                  sentiment={priceData.sentiment.value} 
+                  label="Overall Sentiment" 
+                />
+                <SentimentIndicator 
+                  sentiment={priceData.sentiment.indicators.price} 
+                  label="Price Action" 
+                />
+                <SentimentIndicator 
+                  sentiment={priceData.sentiment.indicators.volume} 
+                  label="Volume" 
+                />
+                <SentimentIndicator 
+                  sentiment={priceData.sentiment.indicators.momentum} 
+                  label="Momentum" 
+                />
               </div>
             </div>
 
