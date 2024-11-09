@@ -1,8 +1,18 @@
 // src/components/GameFiTradingPanel.tsx
 import React, { useState, useEffect } from 'react';
-import { Shield, Award, Zap, Heart, Sword, Target, TrendingUp, AlertTriangle } from 'lucide-react';
+import { 
+  Shield, 
+  Award, 
+  Zap, 
+  Heart, 
+  Sword, 
+  Target, 
+  TrendingUp, 
+  AlertTriangle, 
+  HelpCircle 
+} from 'lucide-react';
 import { riskCalculator } from '../services/risk-scoring/calculator';
-import type { RiskMetrics } from '../services/risk-scoring/types';
+import { RiskMetrics, DEFAULT_METRICS } from '../services/risk-scoring/types';
 
 interface GameFiTradingPanelProps {
   accountBalance: number;
@@ -16,39 +26,44 @@ interface GameFiTradingPanelProps {
   }>;
 }
 
+interface TooltipProps {
+  content: string;
+  children: React.ReactNode;
+}
+
+const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap mb-2 z-50">
+        {content}
+        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+      </div>
+    </div>
+  );
+};
+
 const GameFiTradingPanel: React.FC<GameFiTradingPanelProps> = ({
-    accountBalance,
-    positions
-  }) => {
-    // Initialize with default metrics
-    const defaultMetrics: RiskMetrics = {
-      positionSizeScore: 100,
-      stopLossScore: 100,
-      riskRewardScore: 100,
-      accountRiskScore: 100,
-      totalRiskScore: 100,
-      healthLevel: 100,
-      rank: 'S',
-      statusEffects: ['Protected']
-    };
-  
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [metrics, setMetrics] = useState<RiskMetrics>(defaultMetrics);
-    const [xp, setXp] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [showAlert, setShowAlert] = useState(false);
-    const [alertMessage, setAlertMessage] = useState('');
+  accountBalance,
+  positions
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [metrics, setMetrics] = useState<RiskMetrics>(DEFAULT_METRICS);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Calculate level from XP
   useEffect(() => {
     const newLevel = Math.floor(xp / 1000) + 1;
     if (newLevel !== level) {
       setLevel(newLevel);
-      handleLevelUp();
+      handleAlert(`Level Up! You're now level ${newLevel}`);
     }
-  }, [xp]);
+  }, [xp, level]);
 
-  // Update metrics and XP when positions change
+  // Update metrics when positions change
   useEffect(() => {
     const accountState = {
       balance: accountBalance,
@@ -61,14 +76,21 @@ const GameFiTradingPanel: React.FC<GameFiTradingPanelProps> = ({
       totalEquity: accountBalance + positions.reduce((sum, p) => sum + p.size, 0)
     };
 
+    const prevMetrics = metrics;
     const newMetrics = riskCalculator.calculateRiskMetrics(accountState);
     setMetrics(newMetrics);
 
     // Award XP for good trading practices
     if (positions.length > 0) {
-      if (newMetrics.stopLossScore > 80) handleXpGain(10, 'Good stop loss placement');
-      if (newMetrics.positionSizeScore > 80) handleXpGain(15, 'Proper position sizing');
-      if (newMetrics.totalRiskScore > 90) handleXpGain(25, 'Excellent risk management');
+      if (newMetrics.stopLossScore > prevMetrics.stopLossScore) {
+        handleXpGain(10, 'Good stop loss placement');
+      }
+      if (newMetrics.positionSizeScore > 80) {
+        handleXpGain(15, 'Proper position sizing');
+      }
+      if (newMetrics.totalRiskScore > 90) {
+        handleXpGain(25, 'Excellent risk management');
+      }
     }
   }, [accountBalance, positions]);
 
@@ -81,11 +103,6 @@ const GameFiTradingPanel: React.FC<GameFiTradingPanelProps> = ({
     setAlertMessage(message);
     setShowAlert(true);
     setTimeout(() => setShowAlert(false), 3000);
-  };
-
-  const handleLevelUp = () => {
-    handleAlert(`Level Up! You're now level ${level + 1}`);
-    // Add any additional level up effects here
   };
 
   const getRankColor = (rank: string) => {
@@ -161,7 +178,12 @@ const GameFiTradingPanel: React.FC<GameFiTradingPanelProps> = ({
         {/* Risk Score */}
         <div className="col-span-2 bg-gray-50 rounded-lg p-3">
           <div className="flex justify-between items-center">
-            <span className="font-medium">Risk Score</span>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">Risk Score</span>
+              <Tooltip content="Overall trading safety score based on position size, stop losses, and account risk">
+                <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
+              </Tooltip>
+            </div>
             <span className={`text-2xl font-bold ${getRankColor(metrics.rank)}`}>
               {metrics.rank}
             </span>
@@ -177,56 +199,99 @@ const GameFiTradingPanel: React.FC<GameFiTradingPanelProps> = ({
           </div>
         </div>
 
-        {/* Health */}
+        {/* Account Safety */}
         <div className="bg-gray-50 rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-2">
             <Heart className="h-4 w-4 text-red-500" />
-            <span className="font-medium">Health</span>
+            <span className="font-medium">Account Safety</span>
+            <Tooltip content="Measures how well your account is protected against losses">
+              <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
+            </Tooltip>
           </div>
           <span className="text-xl font-bold">{metrics.healthLevel}%</span>
         </div>
 
-        {/* Power */}
+        {/* Position Strength */}
         <div className="bg-gray-50 rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-2">
             <Sword className="h-4 w-4 text-blue-500" />
-            <span className="font-medium">Power</span>
+            <span className="font-medium">Position Strength</span>
+            <Tooltip content="Indicates how well your positions are sized and protected">
+              <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
+            </Tooltip>
           </div>
           <span className="text-xl font-bold">{metrics.positionSizeScore}%</span>
         </div>
       </div>
 
-      {/* Status Effects */}
+      {/* Trading Status */}
       <div className="p-4 border-t">
+        <div className="flex items-center space-x-2 mb-2">
+          <Shield className="h-4 w-4 text-indigo-500" />
+          <span className="font-medium">Trading Status</span>
+          <Tooltip content="Current state of your trading position and risk management">
+            <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
+          </Tooltip>
+        </div>
         <div className="flex flex-wrap gap-2">
           {metrics.statusEffects.map((effect, index) => (
-            <div
+            <Tooltip
               key={index}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                effect === 'Protected' ? 'bg-green-100 text-green-800' :
-                effect === 'Vulnerable' ? 'bg-red-100 text-red-800' :
-                effect === 'Strengthened' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}
+              content={
+                effect === 'Protected' ? 'All positions have stop losses in place' :
+                effect === 'Vulnerable' ? 'Some positions lack stop loss protection' :
+                effect === 'Strengthened' ? 'Position sizes are within safe limits' :
+                'High leverage detected - increased risk'
+              }
             >
-              {effect}
-            </div>
+              <div
+                className={`px-3 py-1 rounded-full text-sm font-medium cursor-help ${
+                  effect === 'Protected' ? 'bg-green-100 text-green-800' :
+                  effect === 'Vulnerable' ? 'bg-red-100 text-red-800' :
+                  effect === 'Strengthened' ? 'bg-blue-100 text-blue-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                {effect}
+              </div>
+            </Tooltip>
           ))}
         </div>
       </div>
 
-      {/* Recent Achievements */}
+      {/* Trading Achievements */}
       <div className="p-4 border-t">
         <div className="flex items-center space-x-2 mb-3">
           <Award className="h-4 w-4 text-yellow-500" />
-          <span className="font-medium">Recent Achievements</span>
+          <span className="font-medium">Trading Achievements</span>
+          <Tooltip content="Milestones reached through good trading practices">
+            <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
+          </Tooltip>
         </div>
         <div className="space-y-2">
           {metrics.totalRiskScore > 80 && (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Target className="h-4 w-4 text-green-500" />
-              <span>Risk Management Master</span>
-            </div>
+            <Tooltip content="Maintained excellent risk management across all positions">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 cursor-help">
+                <Target className="h-4 w-4 text-green-500" />
+                <span>Risk Management Master</span>
+              </div>
+            </Tooltip>
+          )}
+          {metrics.stopLossScore > 90 && (
+            <Tooltip content="Consistently using proper stop losses">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 cursor-help">
+                <Shield className="h-4 w-4 text-blue-500" />
+                <span>Stop Loss Expert</span>
+              </div>
+            </Tooltip>
+          )}
+          {metrics.positionSizeScore > 90 && (
+            <Tooltip content="Maintaining safe position sizes">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 cursor-help">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                <span>Position Size Master</span>
+              </div>
+            </Tooltip>
           )}
         </div>
       </div>
