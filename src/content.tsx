@@ -1,19 +1,19 @@
 // src/content.tsx
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import TradingPanel from './components/TradingPanel';
+import GameFiTradingPanel from './components/GameFiTradingPanel';
 import './styles/globals.css';
 
-function injectTradingPanel() {
+function injectGameFiPanel() {
   // Remove existing instance if any
-  const existingPanel = document.getElementById('trading-ai-root');
+  const existingPanel = document.getElementById('trading-gamefi-root');
   if (existingPanel) {
     existingPanel.remove();
   }
 
   // Create container
   const container = document.createElement('div');
-  container.id = 'trading-ai-root';
+  container.id = 'trading-gamefi-root';
   document.body.appendChild(container);
 
   // Add Tailwind CDN
@@ -25,20 +25,31 @@ function injectTradingPanel() {
   // Add container styles
   const styleSheet = document.createElement('style');
   styleSheet.textContent = `
-    #trading-ai-root {
+    #trading-gamefi-root {
       position: fixed;
       top: 0;
       right: 0;
       height: 100vh;
       z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
   `;
   document.head.appendChild(styleSheet);
 
   // Render React component
   const root = createRoot(container);
-  root.render(<TradingPanel />);
+  root.render(<GameFiTradingPanel />);
 }
 
 // Inject when content script loads
-injectTradingPanel();
+injectGameFiPanel();
+
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'TOGGLE_PANEL') {
+    const panel = document.getElementById('trading-gamefi-root');
+    if (panel) {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+  }
+});
