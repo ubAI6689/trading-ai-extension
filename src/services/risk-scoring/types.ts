@@ -14,12 +14,23 @@ export interface TradePosition {
   }
   
   export interface RiskMetrics {
-    positionSizeScore: number;  // 0-100
-    stopLossScore: number;      // 0-100
-    riskRewardScore: number;    // 0-100
-    accountRiskScore: number;   // 0-100
-    totalRiskScore: number;     // 0-100
-    healthLevel: number;        // 0-100
+    positionSizeScore: number;
+    stopLossScore: number;
+    riskRewardScore: number;
+    accountRiskScore: number;
+    totalRiskScore: number;
+    healthLevel: number;
     rank: 'S' | 'A' | 'B' | 'C' | 'D';
     statusEffects: string[];
   }
+  
+  export const DEFAULT_METRICS: RiskMetrics = {
+    positionSizeScore: 100,
+    stopLossScore: 100,
+    riskRewardScore: 100,
+    accountRiskScore: 100,
+    totalRiskScore: 100,
+    healthLevel: 100,
+    rank: 'S',
+    statusEffects: ['Protected']
+  };

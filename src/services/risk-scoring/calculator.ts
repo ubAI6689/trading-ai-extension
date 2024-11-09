@@ -1,5 +1,16 @@
 // src/services/risk-scoring/calculator.ts
-export class RiskCalculator {
+export interface RiskMetrics {
+    positionSizeScore: number;
+    stopLossScore: number;
+    riskRewardScore: number;
+    accountRiskScore: number;
+    totalRiskScore: number;
+    healthLevel: number;
+    rank: 'S' | 'A' | 'B' | 'C' | 'D';
+    statusEffects: string[];
+  }
+  
+  export class RiskCalculator {
     private readonly WEIGHTS = {
       positionSize: 0.30,
       stopLoss: 0.25,
@@ -7,7 +18,24 @@ export class RiskCalculator {
       accountRisk: 0.20
     };
   
+    getDefaultMetrics(): RiskMetrics {
+      return {
+        positionSizeScore: 100,
+        stopLossScore: 100,
+        riskRewardScore: 100,
+        accountRiskScore: 100,
+        totalRiskScore: 100,
+        healthLevel: 100,
+        rank: 'S',
+        statusEffects: ['Protected']
+      };
+    }
+  
     calculateRiskMetrics(account: AccountState): RiskMetrics {
+      if (!account.positions.length) {
+        return this.getDefaultMetrics();
+      }
+  
       const positionSizeScore = this.calculatePositionSizeScore(account);
       const stopLossScore = this.calculateStopLossScore(account);
       const riskRewardScore = this.calculateRiskRewardScore(account);
