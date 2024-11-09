@@ -1,3 +1,4 @@
+// webpack.config.js
 const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
@@ -12,7 +13,7 @@ module.exports = {
   entry: {
     content: './src/content.tsx',
     background: './src/background.ts',
-    demo: './src/demo/index.tsx'  // Add demo entry point
+    demo: './src/demo/index.tsx'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -24,8 +25,15 @@ module.exports = {
       directory: path.join(__dirname, 'public'),
     },
     hot: true,
-    open: true,  // Changed from array to boolean
-    port: 3000
+    open: {
+      target: 'demo.html'  // Correctly formatted open option
+    },
+    port: 3000,
+    historyApiFallback: {
+      rewrites: [
+        { from: /^\/$/, to: '/demo.html' }
+      ]
+    }
   },
   module: {
     rules: [
