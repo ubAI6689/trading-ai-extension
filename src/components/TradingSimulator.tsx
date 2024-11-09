@@ -1,43 +1,54 @@
 // src/components/TradingSimulator.tsx
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import GameFiTradingPanel from './GameFiTradingPanel';
 import PriceChart from './PriceChart';
+import TradingControls from './TradingControls';
 
-const TradingSimulator = () => {
+interface Position {
+  id: number;
+  type: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  stopLoss: number;
+  leverage: number;
+  timestamp: number;
+}
+
+const TradingSimulator: React.FC = () => {
   const [price, setPrice] = useState(50000);
   const [balance, setBalance] = useState(100000);
-  const [positions, setPositions] = useState([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [showGameFi, setShowGameFi] = useState(true);
   
-  // Simulate price movements with more realistic behavior
+  // Simulate price movements
   useEffect(() => {
     let prevPrice = price;
     const interval = setInterval(() => {
       setPrice(prev => {
-        const volatility = 0.0005; // Reduced volatility (0.05%)
+        const volatility = 0.0005; // 0.05% volatility
         const trend = 0.0001; // Slight upward trend
-        const randomWalk = (Math.random() - 0.45) * volatility * prev; // Bias slightly upward
-        const smoothingFactor = 0.7; // Reduce price jumps
+        const randomWalk = (Math.random() - 0.45) * volatility * prev;
+        const smoothingFactor = 0.7;
         
-        // Smooth price movement using previous price
         const newPrice = prev + (randomWalk * smoothingFactor) + (trend * prev);
         prevPrice = newPrice;
         
-        return Math.max(newPrice, 100); // Prevent negative prices
+        return Math.max(newPrice, 100);
       });
-    }, 2000); // Increased interval to 2 seconds
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const handleTrade = (type, size, stopLoss = null) => {
-    const newPosition = {
+  // Handle new trades
+  const handleTrade = (type: 'long' | 'short', size: number, stopLoss: number) => {
+    const newPosition: Position = {
       id: Date.now(),
       type,
       size,
       entryPrice: price,
-      stopLoss: stopLoss || (type === 'long' ? price * 0.95 : price * 1.05),
+      stopLoss,
       leverage: 1,
       timestamp: Date.now()
     };
@@ -46,7 +57,8 @@ const TradingSimulator = () => {
     setBalance(prev => prev - size);
   };
 
-  const closePosition = (positionId) => {
+  // Handle closing positions
+  const closePosition = (positionId: number) => {
     const position = positions.find(p => p.id === positionId);
     if (position) {
       const pnl = position.type === 'long' 
@@ -58,11 +70,23 @@ const TradingSimulator = () => {
     }
   };
 
+  // Check for stop losses
+  useEffect(() => {
+    positions.forEach(position => {
+      if (position.type === 'long' && price <= position.stopLoss) {
+        closePosition(position.id);
+      } else if (position.type === 'short' && price >= position.stopLoss) {
+        closePosition(position.id);
+      }
+    });
+  }, [price, positions]);
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Trading Chart */}
+        {/* Main Trading Panel */}
         <div className="col-span-2 bg-white p-6 rounded-lg shadow">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">BTC/USD Simulator</h2>
             <button
@@ -74,36 +98,26 @@ const TradingSimulator = () => {
             </button>
           </div>
           
+          {/* Current Price */}
           <div className="text-4xl font-bold mb-4">
             ${price.toFixed(2)}
           </div>
           
-          {/* Price Chart */}
+          {/* Chart */}
           <div className="mb-6">
             <PriceChart currentPrice={price} positions={positions} />
           </div>
           
           {/* Trading Controls */}
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => handleTrade('long', 10000)}
-              className="p-4 bg-green-500 text-white rounded hover:bg-green-600 flex items-center justify-center space-x-2"
-            >
-              <TrendingUp className="h-5 w-5" />
-              <span>Long $10,000</span>
-            </button>
-            <button
-              onClick={() => handleTrade('short', 10000)}
-              className="p-4 bg-red-500 text-white rounded hover:bg-red-600 flex items-center justify-center space-x-2"
-            >
-              <TrendingDown className="h-5 w-5" />
-              <span>Short $10,000</span>
-            </button>
-          </div>
+          <TradingControls 
+            currentPrice={price}
+            onTrade={handleTrade}
+          />
         </div>
         
-        {/* Account Info */}
+        {/* Account Panel */}
         <div className="space-y-4">
+          {/* Account Balance */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-xl font-bold mb-4">Account Balance</h3>
             <div className="text-2xl font-bold text-green-500">
@@ -119,7 +133,7 @@ const TradingSimulator = () => {
                 <div key={position.id} className="border rounded p-3">
                   <div className="flex justify-between items-center mb-2">
                     <span className={position.type === 'long' ? 'text-green-500' : 'text-red-500'}>
-                      {position.type.toUpperCase()} ${position.size}
+                      {position.type.toUpperCase()} ${position.size.toLocaleString()}
                     </span>
                     <button
                       onClick={() => closePosition(position.id)}
@@ -133,6 +147,12 @@ const TradingSimulator = () => {
                   </div>
                   <div className="text-sm text-gray-500">
                     Stop Loss: ${position.stopLoss.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    PNL: ${(position.type === 'long' 
+                      ? (price - position.entryPrice) * position.size / position.entryPrice 
+                      : (position.entryPrice - price) * position.size / position.entryPrice
+                    ).toFixed(2)}
                   </div>
                 </div>
               ))}
