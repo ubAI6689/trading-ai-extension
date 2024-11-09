@@ -1,6 +1,8 @@
+// src/components/TradingSimulator.tsx
 import React, { useState, useEffect } from 'react';
 import { Line, TrendingUp, TrendingDown, DollarSign, PlayCircle, Shield } from 'lucide-react';
 import GameFiTradingPanel from './GameFiTradingPanel';
+import { riskCalculator } from '../services/risk-scoring/calculator';
 
 const TradingSimulator = () => {
   const [price, setPrice] = useState(50000);
@@ -67,8 +69,8 @@ const TradingSimulator = () => {
           </div>
           
           {/* Simple Chart Visual */}
-          <div className="h-64 border rounded p-4 mb-6 flex items-center justify-center">
-            <span className="text-gray-500">Price Chart Visualization Here</span>
+          <div className="h-64 border rounded p-4 mb-6 flex items-center justify-center bg-gray-50">
+            <span className="text-gray-500">Price Chart Simulation</span>
           </div>
           
           {/* Trading Controls */}
@@ -137,7 +139,13 @@ const TradingSimulator = () => {
       </div>
       
       {/* GameFi Panel */}
-      {showGameFi && <GameFiTradingPanel positions={positions} accountBalance={balance} />}
+      {/* GameFi Panel - Updated props */}
+      {showGameFi && (
+        <GameFiTradingPanel 
+          accountBalance={balance}
+          positions={positions}
+        />
+      )}
     </div>
   );
 };
