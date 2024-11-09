@@ -6,23 +6,26 @@ const dotenv = require('dotenv');
 // Load environment variables from .env file
 const env = dotenv.config().parsed || {};
 
-// Convert environment variables to JSON string
-const envKeys = Object.keys(env).reduce((prev, next) => {
-  prev[`process.env.${next}`] = JSON.stringify(env[next]);
-  return prev;
-}, {});
-
 module.exports = {
   mode: process.env.NODE_ENV || 'development',
   devtool: 'inline-source-map',
   entry: {
     content: './src/content.tsx',
-    background: './src/background.ts'
+    background: './src/background.ts',
+    demo: './src/demo/index.tsx'  // Add demo entry point
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
     clean: true
+  },
+  devServer: {
+    static: {
+      directory: path.join(__dirname, 'public'),
+    },
+    hot: true,
+    open: true,  // Changed from array to boolean
+    port: 3000
   },
   module: {
     rules: [
@@ -67,11 +70,7 @@ module.exports = {
       ]
     }),
     new webpack.DefinePlugin({
-      ...envKeys,
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      'process.env': JSON.stringify(env)
     })
-  ],
-  watchOptions: {
-    ignored: /node_modules/
-  }
+  ]
 };
