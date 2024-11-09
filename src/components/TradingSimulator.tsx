@@ -1,8 +1,8 @@
 // src/components/TradingSimulator.tsx
 import React, { useState, useEffect } from 'react';
-import { Line, TrendingUp, TrendingDown, DollarSign, PlayCircle, Shield } from 'lucide-react';
+import { TrendingUp, TrendingDown, Shield } from 'lucide-react';
 import GameFiTradingPanel from './GameFiTradingPanel';
-import { riskCalculator } from '../services/risk-scoring/calculator';
+import PriceChart from './PriceChart';
 
 const TradingSimulator = () => {
   const [price, setPrice] = useState(50000);
@@ -10,14 +10,24 @@ const TradingSimulator = () => {
   const [positions, setPositions] = useState([]);
   const [showGameFi, setShowGameFi] = useState(true);
   
-  // Simulate price movements
+  // Simulate price movements with more realistic behavior
   useEffect(() => {
+    let prevPrice = price;
     const interval = setInterval(() => {
       setPrice(prev => {
-        const change = (Math.random() - 0.5) * 100;
-        return Math.max(prev + change, 100);
+        const volatility = 0.0005; // Reduced volatility (0.05%)
+        const trend = 0.0001; // Slight upward trend
+        const randomWalk = (Math.random() - 0.45) * volatility * prev; // Bias slightly upward
+        const smoothingFactor = 0.7; // Reduce price jumps
+        
+        // Smooth price movement using previous price
+        const newPrice = prev + (randomWalk * smoothingFactor) + (trend * prev);
+        prevPrice = newPrice;
+        
+        return Math.max(newPrice, 100); // Prevent negative prices
       });
-    }, 1000);
+    }, 2000); // Increased interval to 2 seconds
+
     return () => clearInterval(interval);
   }, []);
 
@@ -27,7 +37,7 @@ const TradingSimulator = () => {
       type,
       size,
       entryPrice: price,
-      stopLoss,
+      stopLoss: stopLoss || (type === 'long' ? price * 0.95 : price * 1.05),
       leverage: 1,
       timestamp: Date.now()
     };
@@ -68,22 +78,22 @@ const TradingSimulator = () => {
             ${price.toFixed(2)}
           </div>
           
-          {/* Simple Chart Visual */}
-          <div className="h-64 border rounded p-4 mb-6 flex items-center justify-center bg-gray-50">
-            <span className="text-gray-500">Price Chart Simulation</span>
+          {/* Price Chart */}
+          <div className="mb-6">
+            <PriceChart currentPrice={price} positions={positions} />
           </div>
           
           {/* Trading Controls */}
           <div className="grid grid-cols-2 gap-4">
             <button
-              onClick={() => handleTrade('long', 10000, price * 0.95)}
+              onClick={() => handleTrade('long', 10000)}
               className="p-4 bg-green-500 text-white rounded hover:bg-green-600 flex items-center justify-center space-x-2"
             >
               <TrendingUp className="h-5 w-5" />
               <span>Long $10,000</span>
             </button>
             <button
-              onClick={() => handleTrade('short', 10000, price * 1.05)}
+              onClick={() => handleTrade('short', 10000)}
               className="p-4 bg-red-500 text-white rounded hover:bg-red-600 flex items-center justify-center space-x-2"
             >
               <TrendingDown className="h-5 w-5" />
@@ -121,11 +131,9 @@ const TradingSimulator = () => {
                   <div className="text-sm text-gray-500">
                     Entry: ${position.entryPrice.toFixed(2)}
                   </div>
-                  {position.stopLoss && (
-                    <div className="text-sm text-gray-500">
-                      Stop Loss: ${position.stopLoss.toFixed(2)}
-                    </div>
-                  )}
+                  <div className="text-sm text-gray-500">
+                    Stop Loss: ${position.stopLoss.toFixed(2)}
+                  </div>
                 </div>
               ))}
               {positions.length === 0 && (
@@ -139,7 +147,6 @@ const TradingSimulator = () => {
       </div>
       
       {/* GameFi Panel */}
-      {/* GameFi Panel - Updated props */}
       {showGameFi && (
         <GameFiTradingPanel 
           accountBalance={balance}
