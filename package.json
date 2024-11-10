@@ -1,25 +1,23 @@
 {
   "name": "trading-ai-extension",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config webpack.config.js",
-    "watch": "webpack --config webpack.config.js --watch",
-    "clean": "rimraf dist/*",
-    "dev": "webpack serve --config webpack.config.js",
-    "build:prod": "NODE_ENV=production webpack --config webpack.config.js"
+  "description": "GameFi Trading Simulator with Risk Management",
+  "private": true,
+  "engines": {
+    "node": ">=18.17.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "main": "src/demo/index.tsx",
+  "scripts": {
+    "dev": "webpack serve --config webpack.config.js",
+    "start": "webpack serve --config webpack.config.js",
+    "build": "NODE_ENV=production webpack --config webpack.config.js && cp public/demo.html dist/",
+    "build:prod": "NODE_ENV=production webpack --config webpack.config.js && cp public/demo.html dist/"
+  },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
     "lucide-react": "^0.456.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "rechart": "^0.0.1",
     "recharts": "^2.13.3"
   },
   "devDependencies": {

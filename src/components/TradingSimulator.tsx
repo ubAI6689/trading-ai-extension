@@ -16,7 +16,7 @@ interface Position {
 }
 
 const TradingSimulator: React.FC = () => {
-  const [price, setPrice] = useState(50000);
+  const [price, setPrice] = useState(75000);
   const [balance, setBalance] = useState(100000);
   const [positions, setPositions] = useState<Position[]>([]);
   const [showGameFi, setShowGameFi] = useState(true);

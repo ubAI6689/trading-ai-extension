@@ -4,30 +4,27 @@ const CopyPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 
-// Load environment variables from .env file
 const env = dotenv.config().parsed || {};
+const isProd = process.env.NODE_ENV === 'production';
 
 module.exports = {
-  mode: process.env.NODE_ENV || 'development',
-  devtool: 'inline-source-map',
+  mode: isProd ? 'production' : 'development',
+  devtool: isProd ? 'source-map' : 'inline-source-map',
   entry: {
-    content: './src/content.tsx',
-    background: './src/background.ts',
     demo: './src/demo/index.tsx'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
-    clean: true
+    clean: true,
+    publicPath: '/'
   },
   devServer: {
     static: {
       directory: path.join(__dirname, 'public'),
     },
     hot: true,
-    open: {
-      target: 'demo.html'  // Correctly formatted open option
-    },
+    open: true,
     port: 3000,
     historyApiFallback: {
       rewrites: [
@@ -39,32 +36,12 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                '@babel/preset-env',
-                '@babel/preset-react',
-                '@babel/preset-typescript'
-              ]
-            }
-          }
-        ],
+        use: 'babel-loader',
         exclude: /node_modules/,
       },
       {
         test: /\.css$/,
-        use: [
-          'style-loader',
-          {
-            loader: 'css-loader',
-            options: {
-              importLoaders: 1
-            }
-          },
-          'postcss-loader'
-        ]
+        use: ['style-loader', 'css-loader', 'postcss-loader']
       }
     ]
   },
@@ -74,11 +51,17 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: 'public' }
+        { 
+          from: 'public',
+          to: path.resolve(__dirname, 'dist')
+        }
       ]
     }),
     new webpack.DefinePlugin({
-      'process.env': JSON.stringify(env)
+      'process.env': JSON.stringify({
+        ...env,
+        NODE_ENV: process.env.NODE_ENV || 'development'
+      })
     })
   ]
 };
