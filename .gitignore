@@ -38,3 +38,4 @@ Thumbs.db
 # Optional: Cache directories
 .npm
 .eslintcache
+.vercel
